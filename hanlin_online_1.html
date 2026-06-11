@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ฮั่นหลิน — ระบบจัดการตารางสอน</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Brand */
+  --ink:    #18120E;
+  --paper:  #FAF8F5;
+  --border: #E3DDD6;
+  --muted:  #F2EEE9;
+  --sub:    #7A6E66;
+  --faint:  #B0A89E;
+
+  /* Accent */
+  --accent:       #C94A0A;
+  --accent-soft:  #FBF0EA;
+  --accent-mid:   #F0824A;
+
+  /* Role chips */
+  --admin-bg: #FBF0EA; --admin-fg: #C94A0A;
+  --staff-bg: #EBF3FA; --staff-fg: #1A5C8A;
+  --teacher-bg: #EBF6EF; --teacher-fg: #1A7A45;
+
+  /* Status */
+  --first-bg: #EBF3FA;  --first-fg: #1A5C8A;
+  --makeup-bg:#F3EEFB;  --makeup-fg:#6B3FA0;
+  --moved-bg: #FFF8E1;  --moved-fg: #B07D00;
+  --leave-bg: #FFEBEE;  --leave-fg: #C62828;
+  --group-bg: #EBF6EF;  --group-fg: #1A7A45;
+  --short-bg: #F3EEFB;  --short-fg: #6B3FA0;
+  --sub-bg:   #E0F2F1;  --sub-fg:   #00796B;
+
+  --radius: 8px;
+  --shadow: 0 1px 4px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 20px rgba(0,0,0,.12);
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body { font-family:'Sarabun',sans-serif; background:var(--paper); color:var(--ink); font-size:14px; }
+
+/* ─── LOGIN ─────────────────────────── */
+#login-screen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background: linear-gradient(135deg,#18120E 0%,#2C1F16 50%,#18120E 100%);
+}
+.login-card {
+  background:var(--paper); border-radius:14px; padding:44px 40px;
+  width:380px; max-width:94vw; box-shadow:var(--shadow-md);
+}
+.login-logo { text-align:center; margin-bottom:32px; }
+.login-logo .hl { font-size:36px; font-weight:700; color:var(--accent); letter-spacing:-1px; }
+.login-logo .sub { font-size:12px; color:var(--sub); margin-top:4px; letter-spacing:.5px; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--sub); margin-bottom:6px; }
+.form-group input {
+  width:100%; padding:11px 12px; border:1.5px solid var(--border);
+  border-radius:var(--radius); font-size:14px; font-family:inherit;
+  transition: border-color .15s;
+}
+.form-group input:focus { outline:none; border-color:var(--accent); }
+.btn-login {
+  width:100%; padding:12px; background:var(--accent); color:#fff;
+  border:none; border-radius:var(--radius); font-size:15px; font-weight:600;
+  font-family:inherit; cursor:pointer; margin-top:4px; transition:background .15s;
+}
+.btn-login:hover { background:#A83D08; }
+.btn-login:disabled { opacity:.6; cursor:default; }
+.login-error { background:var(--leave-bg); color:var(--leave-fg); border-radius:6px; padding:10px 12px; font-size:13px; margin-top:12px; display:none; }
+
+/* ─── APP SHELL ─────────────────────── */
+#app { display:none; height:100vh; flex-direction:column; }
+
+/* TOPBAR */
+.topbar {
+  height:52px; background:var(--ink); color:#fff;
+  display:flex; align-items:center; padding:0 16px; gap:12px; flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.topbar .logo { font-size:17px; font-weight:700; color:var(--accent-mid); letter-spacing:-.3px; margin-right:4px; }
+.topbar .page-name { font-size:13.5px; color:rgba(255,255,255,.65); flex:1; }
+.topbar .user-chip {
+  display:flex; align-items:center; gap:8px; font-size:12.5px;
+  background:rgba(255,255,255,.08); padding:5px 12px; border-radius:20px;
+}
+.topbar .user-chip .role { font-size:10px; padding:2px 7px; border-radius:8px; font-weight:700; }
+.role-admin   { background:var(--admin-bg);   color:var(--admin-fg); }
+.role-staff   { background:var(--staff-bg);   color:var(--staff-fg); }
+.role-teacher { background:var(--teacher-bg); color:var(--teacher-fg); }
+.btn-logout { background:none; border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.7); padding:5px 12px; border-radius:20px; font-size:12px; cursor:pointer; font-family:inherit; }
+.btn-logout:hover { background:rgba(255,255,255,.08); }
+
+/* BODY */
+.app-body { flex:1; display:flex; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  width:210px; background:#1E1510; flex-shrink:0;
+  overflow-y:auto; display:flex; flex-direction:column;
+}
+.nav-section { padding:16px 0 4px; }
+.nav-label { font-size:10px; font-weight:700; color:rgba(255,255,255,.25); letter-spacing:1px; padding:0 16px; margin-bottom:4px; }
+.nav-item {
+  display:flex; align-items:center; gap:9px; padding:9px 16px;
+  font-size:13px; color:rgba(255,255,255,.6); cursor:pointer;
+  border-left:2.5px solid transparent; transition:all .12s;
+}
+.nav-item:hover { background:rgba(255,255,255,.05); color:rgba(255,255,255,.9); }
+.nav-item.active { color:#fff; background:rgba(201,74,10,.15); border-left-color:var(--accent); }
+.nav-item .ni { font-size:15px; width:18px; text-align:center; }
+.sidebar-bottom { margin-top:auto; padding:12px 16px; border-top:1px solid rgba(255,255,255,.07); font-size:10.5px; color:rgba(255,255,255,.2); }
+
+/* CONTENT */
+.content { flex:1; overflow-y:auto; padding:22px; }
+.content-title { font-size:18px; font-weight:700; margin-bottom:18px; }
+
+/* CARDS + GRID */
+.card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+@media(max-width:700px){ .two-col,.three-col{grid-template-columns:1fr;} }
+
+/* STATS */
+.stat-grid { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+.stat-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; flex:1; min-width:100px; }
+.stat-card .val { font-size:28px; font-weight:700; line-height:1; }
+.stat-card .lbl { font-size:11px; color:var(--sub); margin-top:3px; }
+
+/* TABLE */
+.table-wrap { overflow-x:auto; }
+table.data-table { width:100%; border-collapse:collapse; }
+table.data-table th { background:var(--ink); color:#fff; padding:9px 12px; font-size:11.5px; font-weight:500; text-align:left; }
+table.data-table td { padding:9px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top; }
+table.data-table tr:hover td { background:var(--muted); }
+
+/* BADGE / TAG */
+.tag { display:inline-block; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:10px; }
+.tag-first   { background:var(--first-bg); color:var(--first-fg); }
+.tag-makeup  { background:var(--makeup-bg); color:var(--makeup-fg); }
+.tag-moved   { background:var(--moved-bg); color:var(--moved-fg); }
+.tag-leave   { background:var(--leave-bg); color:var(--leave-fg); }
+.tag-group   { background:var(--group-bg); color:var(--group-fg); }
+.tag-short   { background:var(--short-bg); color:var(--short-fg); }
+.tag-sub     { background:var(--sub-bg); color:var(--sub-fg); }
+.tag-normal  { background:var(--muted); color:var(--sub); }
+
+/* FILTER BAR */
+.filter-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.filter-bar select, .filter-bar input {
+  padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius);
+  font-size:13px; font-family:inherit; background:#fff;
+}
+.filter-bar select:focus, .filter-bar input:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:var(--radius); font-size:13px; font-family:inherit; cursor:pointer; border:1px solid transparent; font-weight:500; transition:all .12s; }
+.btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-primary:hover { background:#A83D08; }
+.btn-secondary { background:#fff; border-color:var(--border); color:var(--ink); }
+.btn-secondary:hover { background:var(--muted); }
+.btn-danger { background:var(--leave-bg); color:var(--leave-fg); border-color:#FFCDD2; }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.btn-green { background:#06C755; color:#fff; border-color:#06C755; }
+.btn-green:hover { background:#059B42; }
+
+/* MODAL */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; display:flex; align-items:center; justify-content:center; }
+.modal { background:#fff; border-radius:12px; width:520px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-md); }
+.modal-head { padding:18px 20px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-head h2 { font-size:15px; font-weight:600; }
+.modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--sub); line-height:1; }
+.modal-body { padding:20px; }
+.modal-foot { padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+.form-row { margin-bottom:14px; }
+.form-row label { display:block; font-size:12px; font-weight:600; color:var(--sub); margin-bottom:5px; }
+.form-row input,.form-row select,.form-row textarea { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:13px; font-family:inherit; }
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+.form-row textarea { min-height:70px; resize:vertical; }
+.form-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+
+/* TEACHER VIEW — schedule timeline */
+.timeline-day { margin-bottom:20px; }
+.timeline-day-hd { font-size:12px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+.timeline-day-hd .day-count { background:var(--accent-soft); color:var(--accent); font-size:11px; padding:2px 8px; border-radius:10px; }
+.session-card { background:#fff; border:1px solid var(--border); border-left:3px solid #ccc; border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; display:flex; align-items:flex-start; gap:14px; }
+.session-card.type-วันแรก  { border-left-color:var(--first-fg); background:var(--first-bg); }
+.session-card.type-ชดเชย  { border-left-color:var(--makeup-fg); background:var(--makeup-bg); }
+.session-card.type-ย้ายเวลา{ border-left-color:var(--moved-fg); background:var(--moved-bg); }
+.session-card.type-กลุ่ม  { border-left-color:var(--group-fg); background:var(--group-bg); }
+.session-card.type-ระยะสั้น{ border-left-color:var(--short-fg); background:var(--short-bg); }
+.session-card .sc-time { font-size:11.5px; font-weight:600; color:var(--sub); min-width:100px; font-family:'IBM Plex Mono',monospace; }
+.session-card .sc-body { flex:1; }
+.session-card .sc-student { font-size:14px; font-weight:600; }
+.session-card .sc-detail { font-size:12px; color:var(--sub); margin-top:2px; }
+.session-card .sc-room { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--faint); margin-top:3px; }
+.sub-note { margin-top:6px; padding:5px 8px; background:var(--sub-bg); color:var(--sub-fg); border-radius:5px; font-size:11.5px; }
+.obs-note { margin-top:5px; padding:5px 8px; background:#F3E5F5; color:#6A1B9A; border-radius:5px; font-size:11.5px; }
+
+/* ROOM GRID */
+.room-grid-wrap { overflow-x:auto; }
+.room-grid { border-collapse:collapse; min-width:800px; width:100%; }
+.room-grid th { background:var(--ink); color:#fff; padding:8px 10px; font-size:11px; font-weight:500; text-align:center; border:1px solid rgba(255,255,255,.08); }
+.room-grid th.room-hd { text-align:left; padding-left:14px; min-width:72px; }
+.room-grid td { border:1px solid var(--border); padding:0; vertical-align:top; min-height:42px; }
+.room-grid td.room-label { padding:7px 12px; font-size:12px; font-weight:600; color:var(--sub); background:var(--muted); }
+.room-grid td.zone-A { border-left:3px solid var(--accent); }
+.room-grid td.zone-B { border-left:3px solid var(--staff-fg); }
+.room-grid td.zone-C { border-left:3px solid var(--teacher-fg); }
+.room-grid td.zone-O { border-left:3px solid var(--sub); }
+.zone-hdr td { background:var(--muted); font-size:11px; font-weight:700; color:var(--sub); padding:5px 12px; border:1px solid var(--border); }
+.rslot { padding:4px 6px; font-size:11px; cursor:pointer; }
+.rslot:hover { background:var(--muted); }
+.rslot .rs-name { font-weight:600; }
+.rslot .rs-tc { color:var(--sub); font-size:10px; }
+.rslot .rs-subj { font-size:9.5px; padding:1px 4px; border-radius:4px; margin-top:2px; display:inline-block; }
+.rslot-empty { color:var(--faint); font-size:20px; text-align:center; padding:10px; cursor:pointer; }
+.rslot-empty:hover { background:var(--accent-soft); color:var(--accent); }
+.sub-strip { font-size:10px; padding:2px 5px; background:var(--sub-bg); color:var(--sub-fg); border-radius:3px; margin-top:2px; }
+.obs-strip { font-size:10px; padding:2px 5px; background:#F3E5F5; color:#6A1B9A; border-radius:3px; margin-top:2px; }
+
+/* NOTIFY BANNER */
+.notify-banner { padding:10px 14px; border-radius:var(--radius); margin-bottom:8px; display:flex; gap:10px; font-size:13px; }
+.nb-warn  { background:var(--moved-bg); border:1px solid #FFE082; }
+.nb-info  { background:var(--first-bg); border:1px solid #90CAF9; }
+.nb-alert { background:var(--leave-bg); border:1px solid #FFCDD2; }
+
+/* LOADING */
+.spinner { display:inline-block; width:18px; height:18px; border:2.5px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.loading-overlay { position:fixed; inset:0; background:rgba(250,248,245,.8); display:flex; align-items:center; justify-content:center; z-index:2000; flex-direction:column; gap:12px; font-size:14px; color:var(--sub); }
+
+/* TOAST */
+.toast { position:fixed; bottom:20px; right:20px; background:var(--ink); color:#fff; padding:10px 18px; border-radius:var(--radius); font-size:13px; z-index:3000; box-shadow:var(--shadow-md); animation:fadeUp .2s ease; }
+@keyframes fadeUp{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* CHIP */
+.chip { padding:3px 9px; border-radius:10px; font-size:11.5px; font-weight:500; cursor:pointer; border:1.5px solid transparent; transition:all .1s; }
+.chip-day { background:var(--muted); color:var(--sub); }
+.chip-day.on { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+
+/* MISC */
+.section-hd { font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.8px; margin-bottom:10px; }
+.divider { height:1px; background:var(--border); margin:18px 0; }
+.empty { text-align:center; padding:40px; color:var(--faint); }
+.empty .ei { font-size:36px; margin-bottom:10px; }
+
+/* ONLINE DOT */
+.online-dot { width:7px; height:7px; border-radius:50%; background:#4CAF50; display:inline-block; box-shadow:0 0 0 2px rgba(76,175,80,.25); }
+
+/* PASSWORD CHANGE */
+.pw-form { max-width:340px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="hl">ฮั่นหลิน</div>
+      <div class="sub">SCHEDULER · MULTI-USER v2</div>
+    </div>
+    <div class="form-group">
+      <label>ชื่อผู้ใช้</label>
+      <input id="li-user" type="text" placeholder="username" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>รหัสผ่าน</label>
+      <input id="li-pass" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn-login" id="li-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-error" id="li-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;flex-direction:column;height:100vh">
+  <div class="topbar">
+    <span class="logo">HL</span>
+    <span class="page-name" id="topbar-title">ตารางห้อง</span>
+    <span style="flex:1"></span>
+    <span style="color:rgba(255,255,255,.4);font-size:11px;margin-right:8px" id="online-status">
+      <span class="online-dot"></span> ออนไลน์
+    </span>
+    <div class="user-chip">
+      <span id="topbar-user">—</span>
+      <span class="role" id="topbar-role"></span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">ออก</button>
+  </div>
+  <div class="app-body">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head"><h2 id="modal-title"></h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot" id="modal-foot"></div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="spinner"></div>
+  <span id="loading-text">กำลังโหลด...</span>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — ใส่ URL จาก Apps Script Deployment
+// ============================================================
+const API_URL = localStorage.getItem('hanlin_api_url') || '';
+
+// ============================================================
+// STATE
+// ============================================================
+let TOKEN = localStorage.getItem('hanlin_token') || '';
+let ME = JSON.parse(localStorage.getItem('hanlin_me') || 'null');
+
+let teachers = [], rooms = [], sessions = [], leaves = [], subs = [], obs = [];
+let currentPage = '';
+let filterDay = 'จันทร์';
+let filterSubject = 'ทุกวิชา';
+let filterSearch = '';
+
+const DAYS = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์','อาทิตย์'];
+const TS_WEEK  = ['08.00-09.00','09.00-10.00','10.00-11.00','11.00-12.00','12.00-13.00','13.00-14.00','14.00-15.00','15.00-16.00','15.30-16.30','16.30-17.30','17.30-18.30','18.30-19.30'];
+const TS_WKEND = ['08.00-09.00','09.00-10.00','10.00-11.00','11.00-12.00','12.00-13.00','13.00-14.00','14.00-15.00','15.00-16.00','16.00-17.00','17.00-18.00'];
+const SUBJECTS = ['ภาษาจีน','ภาษาอังกฤษ','ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','ต่างชาติ'];
+const SESSION_TYPES = ['ปกติ','วันแรก','ชดเชย','ย้ายเวลา','ลา','กลุ่ม','ระยะสั้น'];
+const OBS_REASONS = ['ครูลาออก','ประเมินคุณภาพการสอน','พัฒนาการสอน','นิเทศการสอน','อื่นๆ'];
+
+// ============================================================
+// API
+// ============================================================
+async function api(method, params) {
+  const url = (localStorage.getItem('hanlin_api_url') || API_URL);
+  if (!url) { showToast('⚠️ ยังไม่ได้ตั้งค่า API URL'); return null; }
+  try {
+    if (method === 'GET') {
+      const qs = new URLSearchParams({ ...params, token: TOKEN }).toString();
+      const r = await fetch(url + '?' + qs);
+      return await r.json();
+    } else {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ ...params, token: TOKEN })
+      });
+      return await r.json();
+    }
+  } catch (e) {
+    console.error('API error:', e);
+    return null;
+  }
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin() {
+  const u = document.getElementById('li-user').value.trim();
+  const p = document.getElementById('li-pass').value;
+  if (!u || !p) { showLoginErr('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'); return; }
+  const btn = document.getElementById('li-btn');
+  btn.disabled = true; btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  const apiUrl = localStorage.getItem('hanlin_api_url');
+  if (!apiUrl) {
+    const url = prompt('กรุณาใส่ Google Apps Script URL ก่อน:');
+    if (!url) { btn.disabled=false; btn.textContent='เข้าสู่ระบบ'; return; }
+    localStorage.setItem('hanlin_api_url', url.trim());
+  }
+  const res = await api('POST', { action: 'login', username: u, password: p });
+  btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
+  if (!res) { showLoginErr('เชื่อมต่อ API ไม่ได้ ตรวจสอบ URL'); return; }
+  if (!res.ok) {
+    const msgs = { USER_NOT_FOUND:'ไม่พบชื่อผู้ใช้', WRONG_PASSWORD:'รหัสผ่านไม่ถูกต้อง', ACCOUNT_DISABLED:'บัญชีถูกระงับ' };
+    showLoginErr(msgs[res.error] || res.error);
+    return;
+  }
+  TOKEN = res.token;
+  ME = res.user;
+  localStorage.setItem('hanlin_token', TOKEN);
+  localStorage.setItem('hanlin_me', JSON.stringify(ME));
+  initApp();
+}
+
+function doLogout() {
+  TOKEN = ''; ME = null;
+  localStorage.removeItem('hanlin_token');
+  localStorage.removeItem('hanlin_me');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  teachers=[]; rooms=[]; sessions=[]; leaves=[]; subs=[]; obs=[];
+}
+
+function showLoginErr(msg) {
+  const el = document.getElementById('li-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  updateUserChip();
+  buildSidebar();
+  showLoading('กำลังโหลดข้อมูล...');
+  await loadAllData();
+  hideLoading();
+  const defaultPage = ME?.role === 'teacher' ? 'mySchedule' : 'room';
+  navigate(defaultPage);
+}
+
+async function loadAllData() {
+  const [t, r, s, l, sb, o] = await Promise.all([
+    api('GET', { action: 'teachers' }),
+    api('GET', { action: 'rooms' }),
+    api('GET', { action: 'sessions' }),
+    api('GET', { action: 'leaves' }),
+    api('GET', { action: 'subs' }),
+    api('GET', { action: 'obs' }),
+  ]);
+  teachers = t?.data || [];
+  rooms = r?.data || [];
+  sessions = s?.data || [];
+  leaves = l?.data || [];
+  subs = sb?.data || [];
+  obs = o?.data || [];
+}
+
+function updateUserChip() {
+  if (!ME) return;
+  document.getElementById('topbar-user').textContent = ME.displayName || ME.username;
+  const roleEl = document.getElementById('topbar-role');
+  roleEl.textContent = { admin:'แอดมิน', staff:'สแตฟฟ์', teacher:'ครู' }[ME.role] || ME.role;
+  roleEl.className = 'role role-' + ME.role;
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function buildSidebar() {
+  const role = ME?.role;
+  const isAdmin = role === 'admin';
+  const isStaff = role === 'staff' || isAdmin;
+  const isTeacher = role === 'teacher';
+
+  let nav = '';
+  if (isTeacher) {
+    nav += navSection('ตารางของฉัน', [
+      { id:'mySchedule', icon:'📅', label:'ตารางสอน' },
+      { id:'myToday',    icon:'🌅', label:'วันนี้' },
+      { id:'myAlerts',   icon:'🔔', label:'แจ้งเตือน' },
+    ]);
+  } else {
+    nav += navSection('ตาราง', [
+      { id:'room',    icon:'🏫', label:'ตารางห้อง' },
+      { id:'teacher', icon:'👩‍🏫', label:'ตารางครู' },
+      { id:'student', icon:'🎓', label:'นักเรียน' },
+    ]);
+    nav += navSection('บันทึก', [
+      { id:'notify',  icon:'🔔', label:'แจ้งเตือน / ลา' },
+    ]);
+    if (isAdmin) {
+      nav += navSection('จัดการระบบ', [
+        { id:'users',    icon:'👥', label:'ผู้ใช้งาน' },
+        { id:'settings', icon:'⚙️', label:'ตั้งค่า' },
+      ]);
+    }
+  }
+  document.getElementById('sidebar').innerHTML = nav + `<div class="sidebar-bottom">ฮั่นหลิน Scheduler v2<br>ออนไลน์</div>`;
+}
+
+function navSection(label, items) {
+  return `<div class="nav-section">
+    <div class="nav-label">${label}</div>
+    ${items.map(i => `<div class="nav-item" data-page="${i.id}" onclick="navigate('${i.id}')">
+      <span class="ni">${i.icon}</span>${i.label}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  const titles = {
+    room:'ตารางห้อง', teacher:'ตารางครู', student:'นักเรียน',
+    notify:'แจ้งเตือน / ลา', users:'ผู้ใช้งาน', settings:'ตั้งค่า',
+    mySchedule:'ตารางสอนของฉัน', myToday:'วันนี้', myAlerts:'แจ้งเตือนของฉัน',
+  };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  renderPage(page);
+}
+
+function renderPage(page) {
+  const c = document.getElementById('content');
+  if (page === 'room')        c.innerHTML = renderRoomPage();
+  else if (page === 'teacher') c.innerHTML = renderTeacherPage();
+  else if (page === 'student') c.innerHTML = renderStudentPage();
+  else if (page === 'notify')  c.innerHTML = renderNotifyPage();
+  else if (page === 'users')   c.innerHTML = renderUsersPage();
+  else if (page === 'settings') c.innerHTML = renderSettingsPage();
+  else if (page === 'mySchedule') c.innerHTML = renderMySchedule();
+  else if (page === 'myToday')    c.innerHTML = renderMyToday();
+  else if (page === 'myAlerts')   c.innerHTML = renderMyAlerts();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getTeacher(id) { return teachers.find(t => t.id === id) || { name:'?', subject:'?' }; }
+function getRoom(id) { return rooms.find(r => r.id === id) || { id, zone:'?' }; }
+function timeSlots(day) { return ['เสาร์','อาทิตย์'].includes(day) ? TS_WKEND : TS_WEEK; }
+function tagClass(type) {
+  const m = { ปกติ:'normal', วันแรก:'first', ชดเชย:'makeup', ย้ายเวลา:'moved', ลา:'leave', กลุ่ม:'group', ระยะสั้น:'short' };
+  return 'tag tag-'+(m[type]||'normal');
+}
+function subjectShort(s) {
+  return { 'ภาษาจีน':'จีน','ภาษาอังกฤษ':'อังกฤษ','ภาษาไทย':'ไทย','คณิตศาสตร์':'คณิต','วิทยาศาสตร์':'วิทย์','ต่างชาติ':'ต่างชาติ' }[s]||s;
+}
+function subjectColor(s) {
+  const c = { 'ภาษาจีน':'background:var(--admin-bg);color:var(--admin-fg)', 'ภาษาอังกฤษ':'background:var(--staff-bg);color:var(--staff-fg)', 'ภาษาไทย':'background:var(--short-bg);color:var(--short-fg)', 'คณิตศาสตร์':'background:var(--group-bg);color:var(--group-fg)', 'วิทยาศาสตร์':'background:var(--moved-bg);color:var(--moved-fg)', 'ต่างชาติ':'background:var(--leave-bg);color:var(--leave-fg)' };
+  return c[s] || 'background:var(--muted);color:var(--sub)';
+}
+function thaiDate() {
+  const d = new Date();
+  const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const mo = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `วัน${days[d.getDay()]}ที่ ${d.getDate()} ${mo[d.getMonth()]} ${d.getFullYear()+543}`;
+}
+function todayThai() {
+  const d = new Date();
+  return ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][d.getDay()];
+}
+
+// ============================================================
+// PAGE: ROOM
+// ============================================================
+function renderRoomPage() {
+  const day = filterDay;
+  const ts = timeSlots(day);
+  const daySess = sessions.filter(s => s.day === day);
+  const occupied = new Set(daySess.map(s => s.room)).size;
+  const subCount  = subs.filter(sb => sb.day === day).length;
+  const obsCount  = obs.filter(o => o.day === day).length;
+
+  // build map[roomId][time] = [sessions]
+  const map = {};
+  rooms.forEach(r => { map[r.id] = {}; ts.forEach(t => map[r.id][t] = []); });
+  daySess.forEach(s => { if (map[s.room]?.[s.time]) map[s.room][s.time].push(s); });
+
+  const isStaff = ME?.role !== 'teacher';
+  const zones = [...new Set(rooms.map(r => r.zone))].sort();
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <span class="content-title" style="margin:0">ตารางห้องเรียน — ${day}</span>
+    ${isStaff ? `<button class="btn btn-primary" onclick="openAddSessionModal(null,null,'${day}')">+ เพิ่มคลาส</button>` : ''}
+  </div>
+  <div class="filter-bar">
+    <select onchange="filterDay=this.value;renderPage('room')">
+      ${DAYS.map(d=>`<option ${d===day?'selected':''}>${d}</option>`).join('')}
+    </select>
+    <select onchange="filterSubject=this.value;renderPage('room')">
+      <option value="ทุกวิชา">ทุกวิชา</option>
+      ${SUBJECTS.map(s=>`<option ${s===filterSubject?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <input type="text" placeholder="ค้น..." value="${filterSearch}" oninput="filterSearch=this.value;renderPage('room')" style="min-width:140px">
+  </div>
+  <div class="stat-grid" style="margin-bottom:14px">
+    <div class="stat-card"><div class="val" style="color:var(--accent)">${daySess.length}</div><div class="lbl">คลาสทั้งหมด</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--staff-fg)">${occupied}/${rooms.length}</div><div class="lbl">ห้องที่ใช้งาน</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--first-fg)">${daySess.filter(s=>s.type==='วันแรก').length}</div><div class="lbl">วันแรก</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--makeup-fg)">${daySess.filter(s=>s.type==='ชดเชย').length}</div><div class="lbl">ชดเชย</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--sub-fg)">${subCount}</div><div class="lbl">ครูสอนแทน</div></div>
+    <div class="stat-card"><div class="val" style="color:#6A1B9A">${obsCount}</div><div class="lbl">สังเกตการสอน</div></div>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11.5px">
+    <span>🟦 ปกติ</span><span style="color:var(--first-fg)">🔵 วันแรก</span><span style="color:var(--makeup-fg)">🟣 ชดเชย</span>
+    <span style="color:var(--moved-fg)">🟡 ย้ายเวลา</span><span style="color:var(--sub-fg)">🟢 แทน</span><span style="color:#6A1B9A">🔮 สังเกต</span>
+  </div>
+  <div class="room-grid-wrap"><table class="room-grid">
+  <thead><tr>
+    <th class="room-hd">ห้อง</th>
+    ${ts.map(t=>`<th>${t}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  zones.forEach(zone => {
+    html += `<tr class="zone-hdr"><td colspan="${ts.length+1}">โซน ${zone}</td></tr>`;
+    rooms.filter(r => r.zone === zone).forEach(room => {
+      const unavail = room.note?.includes('ซ่อม');
+      html += `<tr><td class="room-label zone-${zone}" ${unavail?'style="opacity:.5"':''}>${room.id}${room.note?`<br><span style="font-size:9px;color:var(--faint)">${room.note}</span>`:''}</td>`;
+      ts.forEach(t => {
+        let slotS = (map[room.id]?.[t] || []).filter(s => {
+          if (filterSubject !== 'ทุกวิชา' && s.subject !== filterSubject) return false;
+          if (filterSearch && !s.student.includes(filterSearch) && !getTeacher(s.teacherId).name.includes(filterSearch)) return false;
+          return true;
+        });
+        const slotSub = subs.find(sb => sb.day===day && sb.time===t && sb.room===room.id);
+        const slotObs = obs.find(o => o.day===day && o.time===t && o.room===room.id);
+        if (unavail) { html += `<td style="background:#f5f5f5"></td>`; }
+        else if (slotS.length === 0 && !slotSub && !slotObs) {
+          html += `<td>${isStaff?`<div class="rslot-empty" onclick="openAddSessionModal('${room.id}','${t}','${day}')">+</div>`:'<div style="padding:4px"></div>'}</td>`;
+        } else {
+          html += `<td>`;
+          slotS.forEach(s => {
+            const tc = getTeacher(s.teacherId);
+            const hasLeave = leaves.some(l => l.teacherId===s.teacherId && l.day===s.day && l.time===s.time);
+            const thisSub = subs.find(sb => sb.sessionId===s.id || (sb.day===s.day&&sb.time===s.time&&sb.room===s.room&&sb.sessionTeacherId===s.teacherId));
+            const thisObs = obs.find(o => o.day===s.day&&o.time===s.time&&o.room===s.room&&(o.sessionId===s.id||o.teacherId===s.teacherId));
+            html += `<div class="rslot" onclick="${isStaff?`openEditSessionModal('${s.id}')`:''}" style="cursor:${isStaff?'pointer':'default'}">
+              <div class="rs-name" ${hasLeave?'style="text-decoration:line-through;color:var(--leave-fg)"':''}>${s.student}${s.isShortCourse==='true'||s.isShortCourse===true?'<span class="tag tag-short" style="margin-left:3px;font-size:9px">RS</span>':''}</div>
+              <div class="rs-tc" ${hasLeave?'style="color:var(--leave-fg)"':''}>${tc.name}${hasLeave?' (ลา)':''}</div>
+              <div><span class="rs-subj" style="${subjectColor(s.subject)}">${subjectShort(s.subject)}</span> <span class="${tagClass(s.type)}" style="font-size:9px">${s.type!=='ปกติ'?s.type:''}</span></div>
+              ${thisSub?`<div class="sub-strip">🔄 ${thisSub.subName} (${thisSub.subType==='internal'?'ใน':'นอก'})</div>`:''}
+              ${thisObs?`<div class="obs-strip">👁️ ${thisObs.observerName}</div>`:''}
+            </div>`;
+          });
+          if (slotSub && slotS.length===0) html += `<div class="sub-strip" style="margin:4px;cursor:pointer" onclick="${isStaff?`openEditSubModal('${slotSub.id}')`:''}" >🔄 ${slotSub.subName}</div>`;
+          if (slotObs && slotS.length===0) html += `<div class="obs-strip" style="margin:4px;cursor:pointer" onclick="${isStaff?`openEditObsModal('${slotObs.id}')`:''}" >👁️ ${slotObs.observerName}</div>`;
+          html += `</td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ============================================================
+// PAGE: TEACHER GRID
+// ============================================================
+function renderTeacherPage() {
+  const isStaff = ME?.role !== 'teacher';
+  const hourMap = {};
+  teachers.forEach(t => {
+    const ss = sessions.filter(s => s.teacherId === t.id);
+    hourMap[t.id] = {
+      total: ss.length, first: ss.filter(s=>s.type==='วันแรก').length,
+      makeup: ss.filter(s=>s.type==='ชดเชย').length, leave: leaves.filter(l=>l.teacherId===t.id).length,
+      short: ss.filter(s=>s.isShortCourse==='true'||s.isShortCourse===true).length,
+    };
+  });
+  const sorted = [...teachers].sort((a,b) => (hourMap[b.id]?.total||0)-(hourMap[a.id]?.total||0));
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <span class="content-title" style="margin:0">ตารางครู</span>
+    ${isStaff ? `<button class="btn btn-primary" onclick="openAddTeacherModal()">+ เพิ่มครู</button>` : ''}
+  </div>
+  <div class="filter-bar">
+    <select onchange="filterSubject=this.value;renderPage('teacher')">
+      <option value="ทุกวิชา">ทุกวิชา</option>
+      ${SUBJECTS.map(s=>`<option ${s===filterSubject?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <input type="text" placeholder="ค้นหาครู..." value="${filterSearch}" oninput="filterSearch=this.value;renderPage('teacher')" style="min-width:140px">
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">`;
+  sorted.filter(t => {
+    if (filterSubject !== 'ทุกวิชา' && t.subject !== filterSubject) return false;
+    if (filterSearch && !t.name.includes(filterSearch)) return false;
+    return true;
+  }).forEach(t => {
+    const h = hourMap[t.id];
+    html += `<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='var(--shadow-md)'" onmouseleave="this.style.boxShadow=''" onclick="openTeacherDetailModal('${t.id}')">
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px">${t.name}</div>
+      <span style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:10px;${subjectColor(t.subject)}">${t.subject}</span>
+      <div style="margin-top:8px;display:flex;align-items:baseline;gap:4px">
+        <span style="font-size:26px;font-weight:700;color:var(--accent)">${h.total}</span>
+        <span style="font-size:10px;color:var(--sub)">ชม./สัปดาห์</span>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
+        ${h.first>0?`<span class="tag tag-first">วันแรก ${h.first}</span>`:''}
+        ${h.makeup>0?`<span class="tag tag-makeup">ชดเชย ${h.makeup}</span>`:''}
+        ${h.leave>0?`<span class="tag tag-leave">ลา ${h.leave}</span>`:''}
+        ${h.short>0?`<span class="tag tag-short">RS ${h.short}</span>`:''}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+// ============================================================
+// PAGE: STUDENT
+// ============================================================
+function renderStudentPage() {
+  const isStaff = ME?.role !== 'teacher';
+  const studentMap = {};
+  sessions.forEach(s => {
+    if (!studentMap[s.student]) studentMap[s.student] = { name:s.student, sessions:[] };
+    studentMap[s.student].sessions.push(s);
+  });
+  const students = Object.values(studentMap).sort((a,b) => b.sessions.length-a.sessions.length);
+  const q = filterSearch.toLowerCase();
+  let filtered = q ? students.filter(s=>s.name.toLowerCase().includes(q)) : students;
+  if (filterSubject !== 'ทุกวิชา') filtered = filtered.filter(s=>s.sessions.some(x=>x.subject===filterSubject));
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <span class="content-title" style="margin:0">นักเรียน (${students.length} คน)</span>
+    ${isStaff ? `<button class="btn btn-primary" onclick="openAddSessionModal(null,null,filterDay)">+ เพิ่มคลาส</button>` : ''}
+  </div>
+  <div class="filter-bar">
+    <input type="text" placeholder="ค้นหานักเรียน..." value="${filterSearch}" oninput="filterSearch=this.value;renderPage('student')" style="min-width:200px">
+    <select onchange="filterSubject=this.value;renderPage('student')">
+      <option value="ทุกวิชา">ทุกวิชา</option>
+      ${SUBJECTS.map(s=>`<option ${s===filterSubject?'selected':''}>${s}</option>`).join('')}
+    </select>
+  </div>
+  <div class="table-wrap"><table class="data-table">
+  <thead><tr><th>ชื่อ</th><th>คลาส</th><th>วิชา / ครู</th><th>วัน-เวลา</th><th>ประเภท</th>${isStaff?'<th>จัดการ</th>':''}</tr></thead>
+  <tbody>`;
+  filtered.forEach(st => {
+    const subjects = [...new Set(st.sessions.map(s=>s.subject))];
+    const tcs = [...new Set(st.sessions.map(s=>getTeacher(s.teacherId).name))];
+    const types = [...new Set(st.sessions.map(s=>s.type))].filter(t=>t!=='ปกติ');
+    const isRS = st.sessions.some(s=>s.isShortCourse==='true'||s.isShortCourse===true);
+    html += `<tr>
+      <td style="font-weight:600">${st.name}${isRS?'<span class="tag tag-short" style="margin-left:5px;font-size:9px">RS</span>':''}</td>
+      <td style="color:var(--accent);font-weight:700">${st.sessions.length}</td>
+      <td>${subjects.map(s=>`<span style="font-size:10.5px;padding:1px 6px;border-radius:6px;${subjectColor(s)}">${subjectShort(s)}</span>`).join(' ')}<br><span style="font-size:11px;color:var(--sub)">${tcs.slice(0,3).join(', ')}</span></td>
+      <td style="font-size:11.5px;color:var(--sub)">${[...new Set(st.sessions.map(s=>s.day+' '+s.time))].slice(0,3).join('<br>')}</td>
+      <td>${types.map(t=>`<span class="${tagClass(t)}">${t}</span>`).join(' ')}</td>
+      ${isStaff?`<td><button class="btn btn-secondary btn-sm" onclick="openStudentDetailModal('${st.name}')">ดู</button> <button class="btn btn-secondary btn-sm" onclick="openAddSubjectModal('${st.name}')">+วิชา</button></td>`:''}
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ============================================================
+// PAGE: NOTIFY
+// ============================================================
+function renderNotifyPage() {
+  const isAdmin = ME?.role === 'admin';
+  const isStaff = ME?.role !== 'teacher';
+  const pending = sessions.filter(s => (s.type==='วันแรก'||s.type==='ชดเชย'||s.type==='ย้ายเวลา') && s.notified!=='true' && s.notified!==true);
+
+  let html = `<div class="content-title">แจ้งเตือน / บันทึกลา</div>`;
+
+  // Pending notify
+  if (pending.length > 0 && isStaff) {
+    html += `<div class="card" style="border-left:4px solid #06C755;margin-bottom:18px">
+    <div class="section-hd" style="color:#059B42">⏳ รอส่ง Line แจ้งเตือน (${pending.length} รายการ)</div>
+    ${pending.slice(0,5).map(s => {
+      const tc = getTeacher(s.teacherId);
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+        <span><strong>${s.student}</strong> <span class="${tagClass(s.type)}">${s.type}</span> — ครู${tc.name} | ${s.day} ${s.time} ${s.room}</span>
+        <button class="btn btn-sm btn-green" onclick="confirmNotify('${s.id}')">📲 ส่ง</button>
+      </div>`;
+    }).join('')}
+    ${pending.length>5?`<div style="font-size:11px;color:var(--sub);margin-top:4px">และอีก ${pending.length-5} รายการ</div>`:''}
+    </div>`;
+  }
+
+  // Leaves
+  html += `<div class="divider"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="section-hd" style="margin:0">ประวัติการลา (${leaves.length} รายการ)</div>
+    ${isStaff?`<button class="btn btn-secondary btn-sm" onclick="openAddLeaveModal()">+ บันทึกลา</button>`:''}
+  </div>
+  <div class="table-wrap"><table class="data-table">
+  <thead><tr><th>ครู</th><th>วัน</th><th>เวลา</th><th>เหตุผล</th><th>วันที่</th>${isAdmin?'<th></th>':''}</tr></thead>
+  <tbody>`;
+  leaves.forEach(l => {
+    const tc = getTeacher(l.teacherId);
+    html += `<tr>
+      <td style="font-weight:600">${tc.name}</td>
+      <td>${l.day}</td><td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${l.time}</td>
+      <td>${l.reason}</td><td style="font-size:12px;color:var(--sub)">${l.date||''}</td>
+      ${isAdmin?`<td><button class="btn btn-danger btn-sm" onclick="deleteLeave('${l.id}')">ลบ</button></td>`:''}
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // Subs
+  html += `<div class="divider"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="section-hd" style="margin:0">ครูสอนแทน (${subs.length} รายการ)</div>
+    ${isStaff?`<button class="btn btn-secondary btn-sm" onclick="openAddSubModal(null,null,null,null)">+ บันทึกครูแทน</button>`:''}
+  </div>
+  <div class="table-wrap"><table class="data-table">
+  <thead><tr><th>วัน/เวลา/ห้อง</th><th>ครูแทน</th><th>ประเภท</th><th>หมายเหตุ</th>${isAdmin?'<th></th>':''}</tr></thead>
+  <tbody>`;
+  subs.forEach(sb => {
+    html += `<tr>
+      <td style="font-size:12px">${sb.day} ${sb.time}<br><span style="color:var(--sub)">${sb.room}</span></td>
+      <td style="font-weight:600">${sb.subName}</td>
+      <td><span class="tag ${sb.subType==='internal'?'tag-group':'tag-leave'}">${sb.subType==='internal'?'ภายใน':'ภายนอก'}</span></td>
+      <td style="font-size:12px;color:var(--sub)">${sb.note||'—'}</td>
+      ${isAdmin?`<td><button class="btn btn-danger btn-sm" onclick="deleteSubTeacher('${sb.id}')">ลบ</button></td>`:''}
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // Observations
+  html += `<div class="divider"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="section-hd" style="margin:0">การสังเกตการสอน (${obs.length} รายการ)</div>
+    ${isStaff?`<button class="btn btn-secondary btn-sm" onclick="openAddObsModal(null,null,null,null)">+ บันทึกสังเกต</button>`:''}
+  </div>
+  <div class="table-wrap"><table class="data-table">
+  <thead><tr><th>วัน/เวลา</th><th>ครู</th><th>ผู้สังเกต</th><th>เหตุผล</th><th>บันทึก</th>${isAdmin?'<th></th>':''}</tr></thead>
+  <tbody>`;
+  obs.forEach(o => {
+    const tc = o.teacherId ? getTeacher(o.teacherId) : {name:'—'};
+    html += `<tr>
+      <td style="font-size:12px">${o.day} ${o.time}<br><span style="color:var(--sub)">${o.room}</span></td>
+      <td>${tc.name}</td><td style="font-weight:600">${o.observerName}</td>
+      <td><span class="tag tag-makeup">${o.reason}</span></td>
+      <td style="font-size:12px;color:var(--sub);max-width:160px">${o.note||'—'}</td>
+      ${isAdmin?`<td><button class="btn btn-danger btn-sm" onclick="deleteObs('${o.id}')">ลบ</button></td>`:''}
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ============================================================
+// PAGE: TEACHER SELF VIEW
+// ============================================================
+function renderMySchedule() {
+  const myId = ME?.teacherId;
+  const mySessions = sessions.filter(s => s.teacherId === myId);
+  if (mySessions.length === 0) return `<div class="empty"><div class="ei">📅</div><p>ยังไม่มีตารางสอน</p></div>`;
+
+  const tc = getTeacher(myId);
+  const hourMap = {
+    total: mySessions.length,
+    first: mySessions.filter(s=>s.type==='วันแรก').length,
+    makeup: mySessions.filter(s=>s.type==='ชดเชย').length,
+    moved: mySessions.filter(s=>s.type==='ย้ายเวลา').length,
+    leave: leaves.filter(l=>l.teacherId===myId).length,
+    subIn: subs.filter(s=>s.subTeacherId===myId).length,
+  };
+
+  let html = `
+  <div class="content-title">สวัสดี ครู${tc.name} 👋</div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="val" style="color:var(--accent)">${hourMap.total}</div><div class="lbl">ชม./สัปดาห์</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--first-fg)">${hourMap.first}</div><div class="lbl">วันแรก</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--makeup-fg)">${hourMap.makeup}</div><div class="lbl">ชดเชย</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--moved-fg)">${hourMap.moved}</div><div class="lbl">ย้ายเวลา</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--leave-fg)">${hourMap.leave}</div><div class="lbl">ครั้งที่ลา</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--sub-fg)">${hourMap.subIn}</div><div class="lbl">สอนแทน</div></div>
+  </div>`;
+
+  DAYS.forEach(day => {
+    const daySess = mySessions.filter(s => s.day === day).sort((a,b)=>a.time.localeCompare(b.time));
+    if (daySess.length === 0) return;
+    html += `<div class="timeline-day">
+    <div class="timeline-day-hd">${day} <span class="day-count">${daySess.length} คลาส</span></div>`;
+    daySess.forEach(s => {
+      const thisSub = subs.find(sb => sb.sessionTeacherId===myId && sb.day===s.day && sb.time===s.time);
+      const thisObs = obs.find(o => o.teacherId===myId && o.day===s.day && o.time===s.time);
+      const isLeave = leaves.some(l => l.teacherId===myId && l.day===s.day && l.time===s.time);
+      html += `<div class="session-card type-${s.type}" style="${isLeave?'opacity:.6':''}">
+        <div class="sc-time">${s.time}</div>
+        <div class="sc-body">
+          <div class="sc-student">${s.student} ${isLeave?'<span class="tag tag-leave">ลา</span>':''}</div>
+          <div class="sc-detail">${s.subject}</div>
+          <div class="sc-room">🚪 ${s.room}</div>
+          ${s.type!=='ปกติ'?`<div style="margin-top:4px"><span class="${tagClass(s.type)}">${s.type}</span></div>`:''}
+          ${thisSub?`<div class="sub-note">🔄 มีครูสอนแทน: ${thisSub.subName} (${thisSub.subType==='internal'?'ภายใน':'ภายนอก'})${thisSub.note?' — '+thisSub.note:''}</div>`:''}
+          ${thisObs?`<div class="obs-note">👁️ มีการสังเกตการสอนโดย: ${thisObs.observerName} | ${thisObs.reason}</div>`:''}
+          ${s.note?`<div style="font-size:11.5px;color:var(--sub);margin-top:4px">📝 ${s.note}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  // Also show subs I'm covering
+  const mySubs = subs.filter(sb => sb.subTeacherId === myId);
+  if (mySubs.length > 0) {
+    html += `<div class="divider"></div><div class="section-hd">📌 คลาสที่รับสอนแทน</div>`;
+    mySubs.forEach(sb => {
+      html += `<div class="session-card type-ปกติ" style="border-left-color:var(--sub-fg);background:var(--sub-bg)">
+        <div class="sc-time">${sb.day}<br>${sb.time}</div>
+        <div class="sc-body">
+          <div class="sc-student">สอนแทน${sb.subType==='internal'?' (ภายใน)':' (ภายนอก)'}</div>
+          <div class="sc-room">🚪 ${sb.room}${sb.note?' — '+sb.note:''}</div>
+        </div>
+      </div>`;
+    });
+  }
+  return html;
+}
+
+// ============================================================
+// PAGE: MY TODAY
+// ============================================================
+function renderMyToday() {
+  const myId = ME?.teacherId;
+  const today = todayThai();
+  const mySessions = sessions.filter(s => s.teacherId === myId && s.day === today)
+    .sort((a,b) => a.time.localeCompare(b.time));
+  const mySubs = subs.filter(sb => sb.subTeacherId === myId && sb.day === today);
+
+  let html = `<div class="content-title">วันนี้ — ${thaiDate()}</div>`;
+  if (mySessions.length === 0 && mySubs.length === 0) {
+    html += `<div class="empty"><div class="ei">🎉</div><p>วันนี้ไม่มีคลาส</p></div>`;
+    return html;
+  }
+  html += `<div class="stat-grid">
+    <div class="stat-card"><div class="val" style="color:var(--accent)">${mySessions.length}</div><div class="lbl">คลาสวันนี้</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--first-fg)">${mySessions.filter(s=>s.type==='วันแรก').length}</div><div class="lbl">วันแรก</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--makeup-fg)">${mySessions.filter(s=>s.type==='ชดเชย').length}</div><div class="lbl">ชดเชย</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--sub-fg)">${mySubs.length}</div><div class="lbl">สอนแทน</div></div>
+  </div>`;
+
+  mySessions.forEach(s => {
+    const thisSub = subs.find(sb => sb.sessionTeacherId===myId && sb.day===s.day && sb.time===s.time);
+    const thisObs = obs.find(o => o.teacherId===myId && o.day===s.day && o.time===s.time);
+    html += `<div class="session-card type-${s.type}">
+      <div class="sc-time">${s.time}</div>
+      <div class="sc-body">
+        <div class="sc-student">${s.student}</div>
+        <div class="sc-detail">${s.subject}</div>
+        <div class="sc-room">🚪 ${s.room}</div>
+        ${s.type!=='ปกติ'?`<span class="${tagClass(s.type)}" style="margin-top:4px;display:inline-block">${s.type}</span>`:''}
+        ${thisSub?`<div class="sub-note">🔄 มีครูสอนแทน: ${thisSub.subName}</div>`:''}
+        ${thisObs?`<div class="obs-note">👁️ สังเกตการสอนโดย: ${thisObs.observerName}</div>`:''}
+      </div>
+    </div>`;
+  });
+  mySubs.forEach(sb => {
+    html += `<div class="session-card" style="border-left-color:var(--sub-fg);background:var(--sub-bg)">
+      <div class="sc-time">${sb.time}</div>
+      <div class="sc-body">
+        <div class="sc-student">สอนแทน</div>
+        <div class="sc-room">🚪 ${sb.room}</div>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+// ============================================================
+// PAGE: MY ALERTS
+// ============================================================
+function renderMyAlerts() {
+  const myId = ME?.teacherId;
+  const myFirst  = sessions.filter(s=>s.teacherId===myId&&s.type==='วันแรก');
+  const myMakeup = sessions.filter(s=>s.teacherId===myId&&s.type==='ชดเชย');
+  const myMoved  = sessions.filter(s=>s.teacherId===myId&&s.type==='ย้ายเวลา');
+  const myLeaves = leaves.filter(l=>l.teacherId===myId);
+  const mySubs   = subs.filter(sb=>sb.subTeacherId===myId);
+  const myObs    = obs.filter(o=>o.teacherId===myId);
+
+  const section = (title, color, icon, items, renderFn) => {
+    if (items.length === 0) return '';
+    return `<div style="margin-bottom:18px">
+    <div class="section-hd" style="color:${color}">${icon} ${title} (${items.length})</div>
+    ${items.map(renderFn).join('')}
+    </div>`;
+  };
+
+  let html = `<div class="content-title">แจ้งเตือนของฉัน</div>`;
+
+  html += section('นักเรียนวันแรก','var(--first-fg)','🆕', myFirst, s =>
+    `<div class="notify-banner nb-info">📅 ${s.day} ${s.time} — <strong>${s.student}</strong> | ${s.subject} ห้อง ${s.room}</div>`);
+
+  html += section('นัดชดเชย','var(--makeup-fg)','📅', myMakeup, s =>
+    `<div class="notify-banner" style="background:var(--makeup-bg);border:1px solid #CE93D8">📅 ${s.day} ${s.time} — <strong>${s.student}</strong> ห้อง ${s.room}</div>`);
+
+  html += section('ย้ายเวลา','var(--moved-fg)','🔄', myMoved, s =>
+    `<div class="notify-banner nb-warn">🔄 ${s.day} ${s.time} — <strong>${s.student}</strong> ห้อง ${s.room}</div>`);
+
+  html += section('การลา','var(--leave-fg)','🏥', myLeaves, l =>
+    `<div class="notify-banner nb-alert">🏥 ${l.day} ${l.time} — ${l.reason||'ไม่ระบุ'}</div>`);
+
+  html += section('รับสอนแทน','var(--sub-fg)','🔄', mySubs, sb =>
+    `<div class="notify-banner" style="background:var(--sub-bg);border:1px solid #B2DFDB">🔄 ${sb.day} ${sb.time} ห้อง ${sb.room} (${sb.subType==='internal'?'ภายใน':'ภายนอก'})</div>`);
+
+  html += section('มีการสังเกตการสอน','#6A1B9A','👁️', myObs, o =>
+    `<div class="notify-banner" style="background:#F3E5F5;border:1px solid #CE93D8">👁️ ${o.day} ${o.time} ห้อง ${o.room} — ${o.observerName} | ${o.reason}</div>`);
+
+  if (myFirst.length===0 && myMakeup.length===0 && myMoved.length===0 && myLeaves.length===0 && mySubs.length===0 && myObs.length===0) {
+    html += `<div class="empty"><div class="ei">✅</div><p>ไม่มีรายการแจ้งเตือน</p></div>`;
+  }
+  return html;
+}
+
+// ============================================================
+// PAGE: USERS (Admin)
+// ============================================================
+function renderUsersPage() {
+  const isAdmin = ME?.role === 'admin';
+  if (!isAdmin) return `<div class="empty"><p>ไม่มีสิทธิ์เข้าถึง</p></div>`;
+
+  let html = `
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <span class="content-title" style="margin:0">ผู้ใช้งาน</span>
+    <button class="btn btn-primary" onclick="openAddUserModal()">+ เพิ่มผู้ใช้</button>
+  </div>
+  <div class="card">
+  <div class="table-wrap"><table class="data-table">
+  <thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อแสดง</th><th>Role</th><th>ครู</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+  <tbody>
+  <tr style="background:var(--muted)"><td colspan="6" style="font-size:12px;color:var(--sub);padding:6px 12px">
+    ⚠️ หน้านี้โหลด Users จาก API โดยตรง (ข้อมูลสด) — กด Refresh เพื่ออัพเดต
+    <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="loadUsersAndRender()">🔄 Refresh</button>
+  </td></tr>
+  </tbody></table></div></div>`;
+  loadUsersAndRender();
+  return html;
+}
+
+async function loadUsersAndRender() {
+  const res = await api('POST', { action: 'getUsers' });
+  if (!res?.ok) return;
+  const users = res.data;
+  const tbody = document.querySelector('.data-table tbody');
+  if (!tbody) return;
+  const rows = users.map(u => {
+    const tc = u.teacherId ? getTeacher(u.teacherId) : null;
+    return `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${u.username}</td>
+      <td style="font-weight:600">${u.displayName}</td>
+      <td><span class="role role-${u.role}">${{admin:'แอดมิน',staff:'สแตฟฟ์',teacher:'ครู'}[u.role]||u.role}</span></td>
+      <td>${tc?tc.name:'—'}</td>
+      <td><span style="font-size:11px;padding:2px 7px;border-radius:8px;background:${u.active==='false'?'var(--leave-bg)':'var(--group-bg)'};color:${u.active==='false'?'var(--leave-fg)':'var(--teacher-fg)'}">
+        ${u.active==='false'?'ระงับ':'ใช้งานได้'}</span></td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openEditUserModal(${JSON.stringify(u).replace(/"/g,'&quot;')})">แก้ไข</button>
+        ${u.id !== ME?.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">ลบ</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = `<tr style="background:var(--muted)"><td colspan="6" style="font-size:12px;color:var(--sub);padding:6px 12px">
+    ผู้ใช้ทั้งหมด ${users.length} คน
+    <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="loadUsersAndRender()">🔄 Refresh</button>
+  </td></tr>` + rows;
+}
+
+// ============================================================
+// PAGE: SETTINGS
+// ============================================================
+function renderSettingsPage() {
+  const apiUrl = localStorage.getItem('hanlin_api_url') || '';
+  return `
+  <div class="content-title">ตั้งค่าระบบ</div>
+  <div class="two-col">
+  <div>
+    <div class="card" style="border-left:4px solid #06C755;margin-bottom:16px">
+      <div class="section-hd">🔗 API Endpoint</div>
+      <div class="form-row">
+        <label>Google Apps Script URL</label>
+        <input id="api-url-input" value="${apiUrl}" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="saveApiUrl()">บันทึก</button>
+        <button class="btn btn-secondary" id="test-api-btn" onclick="testApi()">🔌 ทดสอบ</button>
+        <span id="api-status" style="font-size:12px"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-hd">🔑 เปลี่ยนรหัสผ่าน</div>
+      <div class="form-row"><label>รหัสผ่านเดิม</label><input type="password" id="old-pw" /></div>
+      <div class="form-row"><label>รหัสผ่านใหม่</label><input type="password" id="new-pw" /></div>
+      <button class="btn btn-secondary" onclick="changePassword()">เปลี่ยนรหัสผ่าน</button>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="section-hd">ℹ️ ข้อมูลระบบ</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr><td style="padding:5px 0;color:var(--sub)">ผู้ใช้</td><td style="font-weight:600">${ME?.displayName} (${ME?.username})</td></tr>
+        <tr><td style="padding:5px 0;color:var(--sub)">Role</td><td><span class="role role-${ME?.role}">${{admin:'แอดมิน',staff:'สแตฟฟ์',teacher:'ครู'}[ME?.role]||ME?.role}</span></td></tr>
+        <tr><td style="padding:5px 0;color:var(--sub)">ครู</td><td>${ME?.teacherId ? getTeacher(ME.teacherId).name : '—'}</td></tr>
+        <tr><td style="padding:5px 0;color:var(--sub)">Sessions</td><td style="font-weight:700;color:var(--accent)">${sessions.length}</td></tr>
+        <tr><td style="padding:5px 0;color:var(--sub)">ครู</td><td>${teachers.length} คน</td></tr>
+        <tr><td style="padding:5px 0;color:var(--sub)">ห้อง</td><td>${rooms.length} ห้อง</td></tr>
+      </table>
+    </div>
+  </div>
+  </div>`;
+}
+
+async function saveApiUrl() {
+  const val = document.getElementById('api-url-input')?.value.trim();
+  if (!val) { showToast('กรุณากรอก URL'); return; }
+  localStorage.setItem('hanlin_api_url', val);
+  showToast('✅ บันทึก URL เรียบร้อย — โหลดหน้าใหม่เพื่อเชื่อมต่อ');
+}
+async function testApi() {
+  const btn = document.getElementById('test-api-btn');
+  btn.disabled = true; btn.textContent = '⏳ ทดสอบ...';
+  const res = await api('GET', { action: 'ping' });
+  btn.disabled = false; btn.textContent = '🔌 ทดสอบ';
+  const el = document.getElementById('api-status');
+  el.textContent = res?.ok ? '✅ เชื่อมต่อได้' : '❌ เชื่อมต่อไม่ได้';
+  el.style.color = res?.ok ? 'var(--teacher-fg)' : 'var(--leave-fg)';
+}
+async function changePassword() {
+  const op = document.getElementById('old-pw')?.value;
+  const np = document.getElementById('new-pw')?.value;
+  if (!op || !np) { showToast('กรุณากรอกให้ครบ'); return; }
+  const res = await api('POST', { action: 'changePassword', oldPassword: op, newPassword: np });
+  if (res?.ok) { showToast('✅ เปลี่ยนรหัสผ่านเรียบร้อย'); }
+  else showToast('❌ ' + (res?.error || 'ผิดพลาด'));
+}
+
+// ============================================================
+// CRUD MODALS (Session, Teacher, Leave, Sub, Obs, User)
+// ============================================================
+function openAddSessionModal(room, time, day) {
+  const body = `
+  <div class="form-row"><label>ชื่อนักเรียน</label><input id="f-student" /></div>
+  <div class="form-2">
+    <div class="form-row"><label>ครู</label><select id="f-teacher">${teachers.map(t=>`<option value="${t.id}">${t.name} (${t.subject})</option>`).join('')}</select></div>
+    <div class="form-row"><label>วิชา</label><select id="f-subject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-3">
+    <div class="form-row"><label>วัน</label><select id="f-day">${DAYS.map(d=>`<option ${d===(day||filterDay)?'selected':''}>${d}</option>`).join('')}</select></div>
+    <div class="form-row"><label>เวลา</label><select id="f-time">${[...new Set([...TS_WEEK,...TS_WKEND])].map(t=>`<option ${t===time?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ห้อง</label><select id="f-room">${rooms.map(r=>`<option ${r.id===room?'selected':''}>${r.id}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-2">
+    <div class="form-row"><label>ประเภท</label><select id="f-type">${SESSION_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ระยะสั้น?</label><select id="f-short"><option value="false">ไม่ใช่</option><option value="true">ใช่</option></select></div>
+  </div>
+  <div class="form-row"><label>หมายเหตุ</label><input id="f-note" /></div>`;
+  openModal('+ เพิ่มคลาสเรียน', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveNewSession()">บันทึก</button>`);
+}
+
+async function saveNewSession() {
+  const data = {
+    student: document.getElementById('f-student').value.trim(),
+    teacherId: document.getElementById('f-teacher').value,
+    subject: document.getElementById('f-subject').value,
+    day: document.getElementById('f-day').value,
+    time: document.getElementById('f-time').value,
+    room: document.getElementById('f-room').value,
+    type: document.getElementById('f-type').value,
+    isShortCourse: document.getElementById('f-short').value,
+    note: document.getElementById('f-note').value,
+    notified: 'false',
+  };
+  if (!data.student) { showToast('กรุณากรอกชื่อนักเรียน'); return; }
+  showLoading('กำลังบันทึก...');
+  const res = await api('POST', { action: 'addSession', data });
+  hideLoading();
+  if (!res?.ok) { showToast('❌ บันทึกไม่สำเร็จ: ' + res?.error); return; }
+  sessions.push({ ...data, id: res.id });
+  closeModal();
+  renderPage(currentPage);
+  showToast('✅ เพิ่มคลาสเรียบร้อย');
+  if (data.type==='วันแรก'||data.type==='ชดเชย'||data.type==='ย้ายเวลา') {
+    setTimeout(()=>promptNotify({...data,id:res.id}), 300);
+  }
+}
+
+function promptNotify(s) {
+  const tc = getTeacher(s.teacherId);
+  openModal('📲 ส่ง Line แจ้งเตือนครู?',
+    `<div style="text-align:center;padding:10px">
+      <div style="font-size:32px;margin-bottom:8px">📲</div>
+      <p>ลงทะเบียน <strong>${s.type}</strong> ให้ <strong>${s.student}</strong> แล้ว</p>
+      <p style="color:var(--sub);margin-top:6px;font-size:13px">ส่ง Line แจ้งเตือน <strong>ครู${tc.name}</strong> ทันทีไหม?</p>
+      <div style="margin-top:12px;background:var(--muted);border-radius:6px;padding:10px;font-size:12.5px;text-align:left;line-height:1.8">
+        👤 ${s.student} | 📚 ${s.subject}<br>📅 ${s.day} ⏰ ${s.time} | 🚪 ${s.room}
+      </div>
+    </div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">ข้าม</button>
+     <button class="btn btn-green" onclick="confirmNotify('${s.id}')">📲 ส่ง Line ครู${tc.name}</button>`
+  );
+}
+
+async function confirmNotify(sid) {
+  const s = sessions.find(x => x.id === sid);
+  if (!s) return;
+  showLoading('กำลังส่ง Line...');
+  const res = await api('POST', { action: 'notify', data: { sessionId: sid, session: s } });
+  hideLoading();
+  if (res?.ok) {
+    const idx = sessions.findIndex(x=>x.id===sid);
+    if (idx>=0) sessions[idx].notified = 'true';
+    await api('POST', { action: 'updateSession', data: { ...sessions[idx], notified: 'true' } });
+    closeModal();
+    renderPage(currentPage);
+    showToast('✅ ส่ง Line เรียบร้อย');
+  } else showToast('❌ ส่งไม่สำเร็จ');
+}
+
+function openEditSessionModal(sid) {
+  const s = sessions.find(x => x.id === sid);
+  if (!s) return;
+  const isNotifiable = ['วันแรก','ชดเชย','ย้ายเวลา'].includes(s.type);
+  const alreadyNotified = s.notified === 'true' || s.notified === true;
+  const body = `
+  <div class="form-row"><label>นักเรียน</label><input id="ef-student" value="${s.student}" /></div>
+  <div class="form-2">
+    <div class="form-row"><label>ครู</label><select id="ef-teacher">${teachers.map(t=>`<option value="${t.id}" ${t.id===s.teacherId?'selected':''}>${t.name} (${t.subject})</option>`).join('')}</select></div>
+    <div class="form-row"><label>วิชา</label><select id="ef-subject">${SUBJECTS.map(sub=>`<option ${sub===s.subject?'selected':''}>${sub}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-3">
+    <div class="form-row"><label>วัน</label><select id="ef-day">${DAYS.map(d=>`<option ${d===s.day?'selected':''}>${d}</option>`).join('')}</select></div>
+    <div class="form-row"><label>เวลา</label><select id="ef-time">${[...new Set([...TS_WEEK,...TS_WKEND])].map(t=>`<option ${t===s.time?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ห้อง</label><select id="ef-room">${rooms.map(r=>`<option ${r.id===s.room?'selected':''}>${r.id}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-2">
+    <div class="form-row"><label>ประเภท</label><select id="ef-type">${SESSION_TYPES.map(t=>`<option ${t===s.type?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ระยะสั้น?</label><select id="ef-short"><option value="false" ${!s.isShortCourse||s.isShortCourse==='false'?'selected':''}>ไม่ใช่</option><option value="true" ${s.isShortCourse==='true'||s.isShortCourse===true?'selected':''}>ใช่</option></select></div>
+  </div>
+  <div class="form-row"><label>หมายเหตุ</label><input id="ef-note" value="${s.note||''}" /></div>`;
+  openModal('แก้ไขคลาส: '+s.student, body, `
+    <button class="btn btn-danger btn-sm" onclick="deleteSession('${sid}')">ลบ</button>
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    ${isNotifiable ? `<button class="btn ${alreadyNotified?'btn-secondary':'btn-green'}" onclick="saveEditSession('${sid}');${alreadyNotified?'showToast(\'แจ้งไปแล้ว\')':'confirmNotify(\''+sid+'\')'}">${alreadyNotified?'✅ แจ้งแล้ว':'📲 แจ้งครู'}</button>`:``}
+    <button class="btn btn-primary" onclick="saveEditSession('${sid}')">บันทึก</button>`);
+}
+
+async function saveEditSession(sid) {
+  const s = sessions.find(x => x.id === sid);
+  if (!s) return;
+  Object.assign(s, {
+    student: document.getElementById('ef-student').value.trim(),
+    teacherId: document.getElementById('ef-teacher').value,
+    subject: document.getElementById('ef-subject').value,
+    day: document.getElementById('ef-day').value,
+    time: document.getElementById('ef-time').value,
+    room: document.getElementById('ef-room').value,
+    type: document.getElementById('ef-type').value,
+    isShortCourse: document.getElementById('ef-short').value,
+    note: document.getElementById('ef-note').value,
+  });
+  showLoading('กำลังบันทึก...');
+  const res = await api('POST', { action: 'updateSession', data: s });
+  hideLoading();
+  if (res?.ok) { closeModal(); renderPage(currentPage); showToast('✅ บันทึกเรียบร้อย'); }
+  else showToast('❌ ' + res?.error);
+}
+
+async function deleteSession(sid) {
+  if (!confirm('ลบคลาสนี้?')) return;
+  showLoading(); const res = await api('POST', { action: 'deleteSession', data: { id: sid } }); hideLoading();
+  if (res?.ok) { sessions = sessions.filter(s=>s.id!==sid); closeModal(); renderPage(currentPage); showToast('ลบแล้ว'); }
+  else showToast('❌ '+res?.error);
+}
+
+// Teacher Detail Modal
+function openTeacherDetailModal(tid) {
+  const t = getTeacher(tid);
+  const ss = sessions.filter(s => s.teacherId === tid);
+  const dayGroups = {};
+  DAYS.forEach(d => dayGroups[d] = ss.filter(s=>s.day===d).sort((a,b)=>a.time.localeCompare(b.time)));
+  const body = `
+  <div class="stat-grid" style="margin-bottom:14px">
+    <div class="stat-card"><div class="val" style="color:var(--accent)">${ss.length}</div><div class="lbl">ชม./สัปดาห์</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--first-fg)">${ss.filter(s=>s.type==='วันแรก').length}</div><div class="lbl">วันแรก</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--leave-fg)">${leaves.filter(l=>l.teacherId===tid).length}</div><div class="lbl">ลา</div></div>
+  </div>
+  ${DAYS.filter(d=>dayGroups[d].length>0).map(d=>`
+    <div class="section-hd">${d} (${dayGroups[d].length} คลาส)</div>
+    ${dayGroups[d].map(s=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;min-width:100px;color:var(--sub)">${s.time}</span>
+      <span style="font-weight:600">${s.student}</span>
+      <span style="color:var(--sub)">${s.room}</span>
+      <span class="${tagClass(s.type)}">${s.type}</span>
+    </div>`).join('')}
+  `).join('')}`;
+  openModal(`ครู${t.name} — ${t.subject}`, body, `
+    <button class="btn btn-secondary" onclick="openAddLeaveModal('${tid}')">+ บันทึกลา</button>
+    <button class="btn btn-secondary" onclick="closeModal()">ปิด</button>`);
+}
+
+// Student Detail Modal
+function openStudentDetailModal(name) {
+  const ss = sessions.filter(s=>s.student===name).sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||a.time.localeCompare(b.time));
+  const body = `
+  <div style="margin-bottom:10px;font-size:13px;color:var(--sub)">${ss.length} คลาส</div>
+  ${ss.map(s=>{
+    const tc=getTeacher(s.teacherId);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span style="color:var(--sub);min-width:60px">${s.day}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;min-width:100px">${s.time}</span>
+      <span>${s.subject}</span>
+      <span style="color:var(--sub)">ครู${tc.name}</span>
+      <span style="color:var(--sub)">${s.room}</span>
+      <span class="${tagClass(s.type)}">${s.type}</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteSession('${s.id}')">ลบ</button>
+    </div>`;
+  }).join('')}`;
+  openModal('นักเรียน: '+name, body, `
+    <button class="btn btn-secondary" onclick="openAddSubjectModal('${name}')">+ เพิ่มวิชา</button>
+    <button class="btn btn-secondary" onclick="closeModal()">ปิด</button>`);
+}
+
+function openAddSubjectModal(name) {
+  document.getElementById('f-student') && (document.getElementById('f-student').value = name);
+  openAddSessionModal(null, null, filterDay);
+  document.getElementById('f-student').value = name;
+}
+
+// Add Teacher
+function openAddTeacherModal(t) {
+  const edit = !!t;
+  const body = `
+  <div class="form-row"><label>ชื่อครู</label><input id="at-name" value="${t?.name||''}" /></div>
+  <div class="form-row"><label>วิชา</label><select id="at-subject">${SUBJECTS.map(s=>`<option ${s===(t?.subject||'')?'selected':''}>${s}</option>`).join('')}</select></div>
+  <div class="form-row"><label>Line User ID (สำหรับแจ้งเตือน)</label><input id="at-line" value="${t?.lineId||''}" placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxx" /></div>
+  <div class="form-row"><label>วันที่สอน</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${DAYS.map(d=>`<span class="chip chip-day ${(t?.days||'').includes(d)?'on':''}" onclick="this.classList.toggle('on')" data-day="${d}">${d}</span>`).join('')}
+    </div>
+  </div>`;
+  openModal(edit?`แก้ไขครู: ${t.name}`:'+ เพิ่มครู', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveTeacher('${t?.id||''}')">บันทึก</button>`);
+}
+
+async function saveTeacher(id) {
+  const name = document.getElementById('at-name').value.trim();
+  if (!name) { showToast('กรุณากรอกชื่อ'); return; }
+  const days = [...document.querySelectorAll('.chip-day.on')].map(el=>el.dataset.day).join(',');
+  const data = { name, subject: document.getElementById('at-subject').value, lineId: document.getElementById('at-line').value.trim(), days };
+  if (id) { data.id = id; }
+  showLoading();
+  const res = await api('POST', { action: id ? 'updateTeacher' : 'addTeacher', data });
+  hideLoading();
+  if (res?.ok) {
+    if (id) { const i=teachers.findIndex(t=>t.id===id); if(i>=0) teachers[i]={...teachers[i],...data}; }
+    else teachers.push({...data, id: res.id});
+    closeModal(); renderPage(currentPage); showToast('✅ บันทึกเรียบร้อย');
+  } else showToast('❌ '+res?.error);
+}
+
+// Leave
+function openAddLeaveModal(tid) {
+  const body = `
+  <div class="form-row"><label>ครู</label><select id="al-t">${teachers.map(t=>`<option value="${t.id}" ${t.id===tid?'selected':''}>${t.name}</option>`).join('')}</select></div>
+  <div class="form-2">
+    <div class="form-row"><label>วัน</label><select id="al-d">${DAYS.map(d=>`<option>${d}</option>`).join('')}</select></div>
+    <div class="form-row"><label>เวลา</label><select id="al-t2">${TS_WEEK.map(t=>`<option>${t}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-row"><label>เหตุผล</label><input id="al-r" placeholder="ป่วย / ธุระส่วนตัว" /></div>
+  <div class="form-row"><label>วันที่</label><input id="al-dt" type="date" value="${new Date().toISOString().split('T')[0]}" /></div>`;
+  openModal('+ บันทึกการลา', body, `
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveLeave()">บันทึก</button>`);
+}
+
+async function saveLeave() {
+  const data = { teacherId:document.getElementById('al-t').value, day:document.getElementById('al-d').value, time:document.getElementById('al-t2').value, reason:document.getElementById('al-r').value||'ไม่ระบุ', date:document.getElementById('al-dt').value };
+  showLoading(); const res = await api('POST',{action:'addLeave',data}); hideLoading();
+  if(res?.ok){leaves.push({...data,id:res.id});closeModal();renderPage(currentPage);showToast('✅ บันทึกลาเรียบร้อย');}
+  else showToast('❌ '+res?.error);
+}
+
+async function deleteLeave(id) {
+  if(!confirm('ลบรายการลา?'))return;
+  const res=await api('POST',{action:'deleteLeave',data:{id}});
+  if(res?.ok){leaves=leaves.filter(l=>l.id!==id);renderPage(currentPage);showToast('ลบแล้ว');}
+}
+
+// Sub & Obs stubs (similar pattern)
+function openAddSubModal(sessionId,day,time,room){
+  const body=`
+  <div class="form-3">
+    <div class="form-row"><label>วัน</label><select id="sb-d">${DAYS.map(d=>`<option ${d===(day||filterDay)?'selected':''}>${d}</option>`).join('')}</select></div>
+    <div class="form-row"><label>เวลา</label><select id="sb-t">${TS_WEEK.map(t=>`<option ${t===time?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ห้อง</label><select id="sb-r">${rooms.map(r=>`<option ${r.id===room?'selected':''}>${r.id}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-row"><label>ประเภทครูแทน</label><select id="sb-type"><option value="internal">ภายใน</option><option value="external">ภายนอก</option></select></div>
+  <div class="form-row"><label>ชื่อครูแทน</label><input id="sb-name" /></div>
+  <div class="form-row"><label>ครูที่ลา</label><select id="sb-leave"><option value="">— ไม่ระบุ —</option>${leaves.map(l=>`<option value="${l.id}">${getTeacher(l.teacherId).name} ${l.day} ${l.time}</option>`).join('')}</select></div>
+  <div class="form-row"><label>หมายเหตุ</label><input id="sb-note" /></div>`;
+  openModal('+ บันทึกครูสอนแทน',body,`
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveSub()">บันทึก</button>`);
+}
+
+async function saveSub(){
+  const subType=document.getElementById('sb-type').value;
+  const subName=document.getElementById('sb-name').value.trim();
+  if(!subName){showToast('กรุณากรอกชื่อครูแทน');return;}
+  const data={day:document.getElementById('sb-d').value,time:document.getElementById('sb-t').value,room:document.getElementById('sb-r').value,subName,subType,leaveId:document.getElementById('sb-leave').value,note:document.getElementById('sb-note').value,subTeacherId:subType==='internal'?(teachers.find(t=>t.name===subName)?.id||''):'',sessionTeacherId:''};
+  showLoading();const res=await api('POST',{action:'addSub',data});hideLoading();
+  if(res?.ok){subs.push({...data,id:res.id});closeModal();renderPage(currentPage);showToast('✅ บันทึกครูแทนเรียบร้อย');}
+  else showToast('❌ '+res?.error);
+}
+async function deleteSubTeacher(id){if(!confirm('ลบ?'))return;const res=await api('POST',{action:'deleteSub',data:{id}});if(res?.ok){subs=subs.filter(s=>s.id!==id);renderPage(currentPage);showToast('ลบแล้ว');}}
+
+function openAddObsModal(day,time,room,teacherId){
+  const body=`
+  <div class="form-3">
+    <div class="form-row"><label>วัน</label><select id="ob-d">${DAYS.map(d=>`<option ${d===(day||filterDay)?'selected':''}>${d}</option>`).join('')}</select></div>
+    <div class="form-row"><label>เวลา</label><select id="ob-t">${TS_WEEK.map(t=>`<option ${t===time?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="form-row"><label>ห้อง</label><select id="ob-r">${rooms.map(r=>`<option ${r.id===room?'selected':''}>${r.id}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-row"><label>ครูที่ถูกสังเกต</label><select id="ob-tc"><option value="">— ไม่ระบุ —</option>${teachers.map(t=>`<option value="${t.id}" ${t.id===teacherId?'selected':''}>${t.name}</option>`).join('')}</select></div>
+  <div class="form-row"><label>ผู้สังเกต</label><input id="ob-obs" placeholder="ชื่อผู้สังเกต" /></div>
+  <div class="form-row"><label>เหตุผล</label><select id="ob-rsn">${OBS_REASONS.map(r=>`<option>${r}</option>`).join('')}</select></div>
+  <div class="form-row"><label>บันทึก</label><textarea id="ob-note"></textarea></div>`;
+  openModal('+ บันทึกการสังเกตการสอน',body,`
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveObs()">บันทึก</button>`);
+}
+async function saveObs(){
+  const observerName=document.getElementById('ob-obs').value.trim();
+  if(!observerName){showToast('กรุณากรอกชื่อผู้สังเกต');return;}
+  const data={day:document.getElementById('ob-d').value,time:document.getElementById('ob-t').value,room:document.getElementById('ob-r').value,teacherId:document.getElementById('ob-tc').value,observerName,reason:document.getElementById('ob-rsn').value,note:document.getElementById('ob-note').value,sessionId:''};
+  showLoading();const res=await api('POST',{action:'addObs',data});hideLoading();
+  if(res?.ok){obs.push({...data,id:res.id});closeModal();renderPage(currentPage);showToast('✅ บันทึกการสังเกตเรียบร้อย');}
+  else showToast('❌ '+res?.error);
+}
+async function deleteObs(id){if(!confirm('ลบ?'))return;const res=await api('POST',{action:'deleteObs',data:{id}});if(res?.ok){obs=obs.filter(o=>o.id!==id);renderPage(currentPage);showToast('ลบแล้ว');}}
+
+// Placeholder edit stubs
+function openEditSubModal(id){const sb=subs.find(x=>x.id===id);if(!sb)return;openAddSubModal(null,sb.day,sb.time,sb.room);}
+function openEditObsModal(id){const o=obs.find(x=>x.id===id);if(!o)return;openAddObsModal(o.day,o.time,o.room,o.teacherId);}
+
+// User modals
+function openAddUserModal(){
+  const body=`
+  <div class="form-2">
+    <div class="form-row"><label>ชื่อผู้ใช้</label><input id="au-u" /></div>
+    <div class="form-row"><label>รหัสผ่าน</label><input id="au-p" type="password" /></div>
+  </div>
+  <div class="form-row"><label>ชื่อแสดง</label><input id="au-dn" /></div>
+  <div class="form-2">
+    <div class="form-row"><label>Role</label><select id="au-r"><option value="staff">Staff</option><option value="teacher">ครู</option><option value="admin">Admin</option></select></div>
+    <div class="form-row"><label>ครูที่ผูก (สำหรับ role ครู)</label><select id="au-t"><option value="">— ไม่ผูก —</option>${teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>
+  </div>`;
+  openModal('+ เพิ่มผู้ใช้',body,`
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveNewUser()">บันทึก</button>`);
+}
+async function saveNewUser(){
+  const data={username:document.getElementById('au-u').value.trim(),password:document.getElementById('au-p').value,displayName:document.getElementById('au-dn').value.trim(),role:document.getElementById('au-r').value,teacherId:document.getElementById('au-t').value};
+  if(!data.username||!data.password){showToast('กรุณากรอกให้ครบ');return;}
+  showLoading();const res=await api('POST',{action:'addUser',data});hideLoading();
+  if(res?.ok){closeModal();loadUsersAndRender();showToast('✅ เพิ่มผู้ใช้เรียบร้อย');}
+  else showToast('❌ '+res?.error);
+}
+function openEditUserModal(u){
+  const body=`
+  <div class="form-row"><label>ชื่อแสดง</label><input id="eu-dn" value="${u.displayName}" /></div>
+  <div class="form-row"><label>รหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label><input id="eu-p" type="password" placeholder="ไม่เปลี่ยน" /></div>
+  <div class="form-2">
+    <div class="form-row"><label>Role</label><select id="eu-r"><option value="staff" ${u.role==='staff'?'selected':''}>Staff</option><option value="teacher" ${u.role==='teacher'?'selected':''}>ครู</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
+    <div class="form-row"><label>ครูที่ผูก</label><select id="eu-t"><option value="">— ไม่ผูก —</option>${teachers.map(t=>`<option value="${t.id}" ${t.id===u.teacherId?'selected':''}>${t.name}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-row"><label>สถานะ</label><select id="eu-a"><option value="true" ${u.active!=='false'?'selected':''}>ใช้งานได้</option><option value="false" ${u.active==='false'?'selected':''}>ระงับ</option></select></div>`;
+  openModal(`แก้ไขผู้ใช้: ${u.username}`,body,`
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="saveEditUser('${u.id}')">บันทึก</button>`);
+}
+async function saveEditUser(id){
+  const pw=document.getElementById('eu-p').value;
+  const data={id,displayName:document.getElementById('eu-dn').value,role:document.getElementById('eu-r').value,teacherId:document.getElementById('eu-t').value,active:document.getElementById('eu-a').value};
+  if(pw)data.password=pw;
+  showLoading();const res=await api('POST',{action:'updateUser',data});hideLoading();
+  if(res?.ok){closeModal();loadUsersAndRender();showToast('✅ อัพเดตเรียบร้อย');}
+  else showToast('❌ '+res?.error);
+}
+async function deleteUser(id){if(!confirm('ลบผู้ใช้?'))return;const res=await api('POST',{action:'deleteUser',data:{id}});if(res?.ok){loadUsersAndRender();showToast('ลบแล้ว');}else showToast('❌ '+res?.error);}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(title, body, foot) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-foot').innerHTML = foot || '<button class="btn btn-secondary" onclick="closeModal()">ปิด</button>';
+  document.getElementById('modal-bg').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal-bg').style.display = 'none'; }
+
+// ============================================================
+// LOADING + TOAST
+// ============================================================
+function showLoading(msg) { document.getElementById('loading').style.display='flex'; document.getElementById('loading-text').textContent=msg||'กำลังโหลด...'; }
+function hideLoading() { document.getElementById('loading').style.display='none'; }
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+// ============================================================
+// AUTO-LOGIN
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('today-badge') && (document.getElementById('today-badge').textContent = thaiDate());
+  if (TOKEN && ME) {
+    // Verify token still valid
+    api('GET', { action: 'me' }).then(res => {
+      if (res?.ok) { ME = res.user; initApp(); }
+      else { TOKEN=''; ME=null; localStorage.removeItem('hanlin_token'); localStorage.removeItem('hanlin_me'); }
+    });
+  }
+});
+</script>
+</body>
+</html>
